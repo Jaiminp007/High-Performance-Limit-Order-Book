@@ -1,0 +1,32 @@
+# Compiled binaries
+orderbook
+orderbook_debug
+trading_terminal
+
+# Object files
+*.o
+*.obj
+
+# Build artifacts
+*.out
+*.app
+*.exe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.bak
+*.tmp
+
+# Test outputs
+gmon.out
