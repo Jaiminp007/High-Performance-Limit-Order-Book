@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Professional showcase script for the trading terminal
 
-clear
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
+clear 2>/dev/null || true
 
 cat << "EOF"
 ╔══════════════════════════════════════════════════════════════════╗
@@ -32,7 +35,7 @@ echo "  3) Documentation      - View user guides"
 echo "  4) Build Info         - Show build information"
 echo "  0) Exit"
 echo ""
-read -p "Select option: " choice
+read -p "Select option: " choice || exit 0
 
 case $choice in
     1)
@@ -45,6 +48,9 @@ case $choice in
         echo ""
         echo "Running Test Suite..."
         sleep 1
+        if [[ ! -x ./orderbook ]]; then
+            make orderbook
+        fi
         ./orderbook
         ;;
     3)
@@ -64,12 +70,22 @@ case $choice in
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
         echo "Language:      C++17"
-        echo "Compiler:      $(g++ --version | head -n1)"
+        if command -v g++ >/dev/null 2>&1; then
+            echo "Compiler:      $(g++ --version | head -n1)"
+        else
+            echo "Compiler:      g++ not found"
+        fi
         echo "Build System:  GNU Make"
         echo "Dependencies:  Standard Library Only"
         echo ""
         echo "Components:"
-        ls -lh orderbook trading_terminal 2>/dev/null | tail -2 | awk '{print "  " $9 " - " $5}'
+        for component in orderbook trading_terminal; do
+            if [[ -x "$component" ]]; then
+                ls -lh "$component" | awk '{print "  " $9 " - " $5}'
+            else
+                echo "  $component - not built"
+            fi
+        done
         echo ""
         echo "Performance:"
         echo "  • Order Processing: O(log n + m)"
@@ -91,4 +107,4 @@ case $choice in
 esac
 
 echo ""
-read -p "Press Enter to continue..."
+read -p "Press Enter to continue..." || true

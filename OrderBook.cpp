@@ -1,8 +1,22 @@
 #include "OrderBook.h"
 
+#include <algorithm>
+#include <limits>
+#include <stdexcept>
+
 OrderBook::OrderBook() : next_trade_id_(1) {}
 
 std::vector<Trade> OrderBook::AddOrder(uint64_t order_id, Side side, uint64_t price, uint64_t quantity) {
+    if (price == 0) {
+        throw std::invalid_argument("limit order price must be positive");
+    }
+    if (quantity == 0) {
+        throw std::invalid_argument("order quantity must be positive");
+    }
+    if (order_lookup_.find(order_id) != order_lookup_.end()) {
+        throw std::invalid_argument("an active order with this ID already exists");
+    }
+
     // Create the order
     Order order(order_id, side, price, quantity);
     
@@ -22,12 +36,31 @@ std::vector<Trade> OrderBook::AddOrder(uint64_t order_id, Side side, uint64_t pr
     return trades;
 }
 
-void OrderBook::CancelOrder(uint64_t order_id) {
+std::vector<Trade> OrderBook::AddMarketOrder(uint64_t order_id, Side side, uint64_t quantity) {
+    if (quantity == 0) {
+        throw std::invalid_argument("order quantity must be positive");
+    }
+    if (order_lookup_.find(order_id) != order_lookup_.end()) {
+        throw std::invalid_argument("an active order with this ID already exists");
+    }
+
+    const uint64_t match_price = side == Side::BUY
+        ? std::numeric_limits<uint64_t>::max()
+        : 0;
+    Order order(order_id, side, match_price, quantity);
+
+    // Market orders are immediate-or-cancel: unfilled quantity never rests.
+    if (side == Side::BUY) {
+        return MatchBuyOrder(order);
+    }
+    return MatchSellOrder(order);
+}
+
+bool OrderBook::CancelOrder(uint64_t order_id) {
     // Check if the order exists
     auto it = order_lookup_.find(order_id);
     if (it == order_lookup_.end()) {
-        // Order not found - could log this in production
-        return;
+        return false;
     }
     
     // Get the order location
@@ -38,6 +71,7 @@ void OrderBook::CancelOrder(uint64_t order_id) {
     
     // Remove the order from the book
     RemoveOrder(location.price, location.iterator, side);
+    return true;
 }
 
 void OrderBook::PrintOrderBook() const {
@@ -115,7 +149,7 @@ std::vector<Trade> OrderBook::MatchBuyOrder(Order& order) {
             uint64_t exec_qty = std::min(order.quantity, resting_order.quantity);
             
             // Create a trade
-            trades.emplace_back(next_trade_id_++, resting_order.id, ask_price, exec_qty);
+            trades.emplace_back(next_trade_id_++, order.id, resting_order.id, ask_price, exec_qty);
             
             // Update quantities
             order.quantity -= exec_qty;
@@ -158,7 +192,7 @@ std::vector<Trade> OrderBook::MatchSellOrder(Order& order) {
             uint64_t exec_qty = std::min(order.quantity, resting_order.quantity);
             
             // Create a trade
-            trades.emplace_back(next_trade_id_++, resting_order.id, bid_price, exec_qty);
+            trades.emplace_back(next_trade_id_++, resting_order.id, order.id, bid_price, exec_qty);
             
             // Update quantities
             order.quantity -= exec_qty;
@@ -201,6 +235,8 @@ void OrderBook::AddRestingOrder(const Order& order) {
 }
 
 void OrderBook::RemoveOrder(uint64_t price, OrderIterator it, Side side) {
+    const uint64_t removed_order_id = it->id;
+
     if (side == Side::BUY) {
         auto bid_it = bids_.find(price);
         if (bid_it != bids_.end()) {
@@ -224,5 +260,5 @@ void OrderBook::RemoveOrder(uint64_t price, OrderIterator it, Side side) {
     }
     
     // Remove from lookup
-    order_lookup_.erase(it->id);
+    order_lookup_.erase(removed_order_id);
 }
