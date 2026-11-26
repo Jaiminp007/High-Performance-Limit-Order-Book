@@ -16,7 +16,7 @@ This document describes the architecture and design decisions for a high-perform
 - Multi-threading/concurrent access
 - Persistent storage
 - Network communication
-- Complex order types (IOC, FOK, etc.)
+- Complex order types beyond immediate-or-cancel market orders (FOK, stop, iceberg, etc.)
 
 ---
 
@@ -30,6 +30,7 @@ This document describes the architecture and design decisions for a high-perform
 ├─────────────────────────────────────────┤
 │  Public API:                            │
 │  - AddOrder()                           │
+│  - AddMarketOrder()                     │
 │  - CancelOrder()                        │
 │  - PrintOrderBook()                     │
 ├─────────────────────────────────────────┤
@@ -252,8 +253,10 @@ For BUY order at price P:
 - Single-sided book
 - Price level exhaustion
 - Large order sweeping multiple levels
-- Duplicate order IDs (not tested, should add)
-- Zero quantity orders (not tested, should add)
+- Duplicate active order IDs (rejected and tested)
+- Zero quantity orders (rejected and tested)
+- Zero price limit orders (rejected and tested)
+- Market orders with insufficient liquidity (unfilled quantity is cancelled and tested)
 
 ---
 
@@ -263,23 +266,16 @@ For BUY order at price P:
 
 **For Production Use:**
 
-1. **Input Validation**
-   - Order ID uniqueness
-   - Quantity > 0
-   - Price within valid range
-   - Side validation
-
-2. **Error Handling**
-   - Return codes/exceptions for invalid operations
+1. **Observability**
    - Logging infrastructure
    - Metrics/monitoring
 
-3. **Performance Monitoring**
+2. **Performance Monitoring**
    - Latency histograms
    - Throughput counters
    - Memory usage tracking
 
-4. **Concurrency**
+3. **Concurrency**
    - Lock-free data structures
    - Reader-writer locks
    - Thread-per-symbol model
@@ -289,7 +285,6 @@ For BUY order at price P:
 **Next Generation:**
 
 1. **Order Types**
-   - Immediate-or-Cancel (IOC)
    - Fill-or-Kill (FOK)
    - Stop/Stop-Limit orders
    - Iceberg orders
@@ -353,7 +348,7 @@ for (int i = 0; i < 1000000; i++) {
 
 All code compiles cleanly with:
 ```
--Wall -Wextra -pedantic
+-Wall -Wextra -Wpedantic -Werror
 ```
 
 No warnings, no errors.
@@ -362,7 +357,7 @@ No warnings, no errors.
 
 ## 11. Conclusion
 
-This implementation provides a solid foundation for a production-grade limit order book. The design prioritizes:
+This implementation provides a solid educational foundation for a limit order book. The design prioritizes:
 
 1. **Correctness**: Strict Price-Time Priority
 2. **Performance**: Appropriate data structure choices

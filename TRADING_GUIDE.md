@@ -17,7 +17,7 @@ Or directly:
 ## Features
 
 ✨ **Interactive Trading** - Menu-driven interface  
-✨ **Real-Time Execution** - Microsecond timestamps  
+✨ **Real-Time Execution** - Microsecond-precision timestamps
 ✨ **Session Statistics** - Track orders, trades, volume  
 ✨ **Multiple Order Types** - Market and limit orders  
 ✨ **Order Management** - Cancel by ID  
@@ -28,8 +28,8 @@ Or directly:
 
 | Option | Action | Description |
 |--------|--------|-------------|
-| 1 | Market Buy | Execute immediate buy |
-| 2 | Market Sell | Execute immediate sell |
+| 1 | Market Buy | Execute immediate buy; unfilled quantity is cancelled |
+| 2 | Market Sell | Execute immediate sell; unfilled quantity is cancelled |
 | 3 | Limit Buy | Place buy order at price |
 | 4 | Limit Sell | Place sell order at price |
 | 5 | Cancel Order | Remove order by ID |
@@ -42,13 +42,12 @@ Or directly:
 ## Order Types
 
 ### Market Orders
-Execute immediately at best available price. May result in partial fills.
+Execute immediately at the best available prices. They are immediate-or-cancel orders: any quantity that cannot execute right away is cancelled and never rests in the book.
 
 **Example:**
 ```
 Choice: 1
 Quantity: 50
-Max Price: 10100
 ```
 
 ### Limit Orders
@@ -85,8 +84,9 @@ make clean && make terminal
 ```
 
 **Orders Not Matching?**
-- Check prices cross the spread
-- View book to see current prices
+- Limit orders execute only when prices cross the spread
+- Market orders execute only against existing resting liquidity
+- View the book to see current prices
 - Verify quantity is sufficient
 
 ## Technical Details

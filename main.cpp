@@ -1,6 +1,7 @@
 #include "OrderBook.h"
 #include <iostream>
 #include <iomanip>
+#include <stdexcept>
 
 /**
  * @brief Helper function to print trades
@@ -14,9 +15,74 @@ void PrintTrades(const std::vector<Trade>& trades) {
     std::cout << "  Trades executed:\n";
     for (const auto& trade : trades) {
         std::cout << "    Trade #" << trade.trade_id 
-                  << " | Order ID: " << trade.order_id
+                  << " | Buy ID: " << trade.buy_order_id
+                  << " | Sell ID: " << trade.sell_order_id
                   << " | Price: " << trade.price
                   << " | Qty: " << trade.quantity << "\n";
+    }
+}
+
+void Expect(bool condition, const char* message) {
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
+}
+
+template <typename Fn>
+void ExpectThrows(Fn&& fn, const char* message) {
+    try {
+        fn();
+    } catch (const std::invalid_argument&) {
+        return;
+    }
+    throw std::runtime_error(message);
+}
+
+void RunCorrectnessTests() {
+    {
+        OrderBook book;
+        Expect(book.AddOrder(1, Side::SELL, 100, 10).empty(), "resting sell should not match empty book");
+        auto trades = book.AddOrder(2, Side::BUY, 100, 4);
+        Expect(trades.size() == 1, "expected one buy/sell trade");
+        Expect(trades[0].buy_order_id == 2, "trade must report buy order ID");
+        Expect(trades[0].sell_order_id == 1, "trade must report sell order ID");
+        Expect(trades[0].price == 100 && trades[0].quantity == 4, "trade price/quantity mismatch");
+        Expect(book.CancelOrder(1), "partially filled resting order should cancel");
+        Expect(!book.CancelOrder(1), "duplicate cancellation should return false");
+        Expect(!book.CancelOrder(999), "missing cancellation should return false");
+    }
+
+    {
+        OrderBook book;
+        book.AddOrder(1, Side::BUY, 100, 10);
+        ExpectThrows([&] { book.AddOrder(1, Side::BUY, 101, 1); }, "duplicate active order ID accepted");
+        ExpectThrows([&] { book.AddOrder(3, Side::BUY, 100, 0); }, "zero-quantity order accepted");
+        ExpectThrows([&] { book.AddOrder(4, Side::SELL, 0, 1); }, "zero-price limit order accepted");
+        ExpectThrows([&] { book.AddMarketOrder(5, Side::BUY, 0); }, "zero-quantity market order accepted");
+    }
+
+    {
+        OrderBook book;
+        Expect(book.AddMarketOrder(1, Side::BUY, 10).empty(), "empty-book market buy should not execute");
+        Expect(book.AddOrder(2, Side::SELL, 100, 1).empty(), "unfilled market buy incorrectly rested in book");
+    }
+
+    {
+        OrderBook book;
+        book.AddOrder(1, Side::SELL, 100, 5);
+        auto trades = book.AddMarketOrder(2, Side::BUY, 10);
+        Expect(trades.size() == 1 && trades[0].quantity == 5, "partial market buy fill mismatch");
+        Expect(book.AddOrder(3, Side::SELL, 100, 1).empty(), "unfilled market buy remainder incorrectly rested");
+    }
+
+    {
+        OrderBook book;
+        book.AddOrder(1, Side::SELL, 100, 10);
+        book.AddOrder(2, Side::SELL, 100, 10);
+        auto trades = book.AddOrder(3, Side::BUY, 100, 15);
+        Expect(trades.size() == 2, "FIFO test should produce two trades");
+        Expect(trades[0].sell_order_id == 1 && trades[0].quantity == 10, "FIFO priority not respected at first fill");
+        Expect(trades[1].sell_order_id == 2 && trades[1].quantity == 5, "FIFO priority not respected at second fill");
     }
 }
 
@@ -24,6 +90,14 @@ void PrintTrades(const std::vector<Trade>& trades) {
  * @brief Comprehensive test driver demonstrating all order book functionality
  */
 int main() {
+    try {
+        RunCorrectnessTests();
+        std::cout << "Correctness checks passed.\n";
+    } catch (const std::exception& error) {
+        std::cerr << "Correctness check failed: " << error.what() << "\n";
+        return 1;
+    }
+
     std::cout << "=================================================\n";
     std::cout << "  HIGH-FREQUENCY TRADING ORDER BOOK SIMULATOR\n";
     std::cout << "=================================================\n";
@@ -112,7 +186,7 @@ int main() {
     std::cout << "\n\n[STEP 5] Cancelling an existing order...\n";
     std::cout << "  Cancelling Order #11 (BUY 20 @ 101)\n";
     
-    book.CancelOrder(11);
+    Expect(book.CancelOrder(11), "expected order 11 to cancel in demonstration");
     
     std::cout << "\n[Order Book After Cancellation]";
     book.PrintOrderBook();
@@ -134,7 +208,7 @@ int main() {
     std::cout << "\n\n[STEP 7] Testing cancellation of non-existent order...\n";
     std::cout << "  Attempting to cancel Order #999 (doesn't exist)\n";
     
-    book.CancelOrder(999);
+    Expect(!book.CancelOrder(999), "missing order cancellation should return false");
     std::cout << "  Cancellation handled gracefully (order not found)\n";
     
     // ========== STEP 8: Add orders that match immediately ==========

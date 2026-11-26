@@ -1,8 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Professional showcase script for the trading terminal
 
-clear
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
+if [[ ! -x ./orderbook || ! -x ./trading_terminal ]]; then
+    make
+fi
+
+clear 2>/dev/null || true
 
 cat << "EOF"
 ╔══════════════════════════════════════════════════════════════════╗

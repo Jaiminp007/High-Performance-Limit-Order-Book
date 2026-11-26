@@ -57,6 +57,10 @@ debug: clean
 run: $(TARGET)
 	./$(TARGET)
 
+# Run automated correctness tests
+test: $(TARGET)
+	./$(TARGET)
+
 # Run trading terminal
 run-terminal: $(TERMINAL)
 	./$(TERMINAL)
@@ -76,7 +80,7 @@ performance: clean $(TARGET)
 
 # Static analysis
 analyze:
-	$(CXX) $(CXXFLAGS) -fsyntax-only $(SOURCES)
+	$(CXX) $(CXXFLAGS) -fsyntax-only $(SOURCES) TradingTerminal.cpp
 	@echo "Static analysis complete"
 
 # Help target
@@ -86,6 +90,7 @@ help:
 	@echo "  debug        - Build debug version with symbols"
 	@echo "  performance  - Build with aggressive optimizations"
 	@echo "  run          - Build and run the program"
+	@echo "  test         - Build and run automated correctness tests"
 	@echo "  terminal     - Build interactive trading terminal"
 	@echo "  run-terminal - Build and run trading terminal"
 	@echo "  clean        - Remove build artifacts"
@@ -93,4 +98,4 @@ help:
 	@echo "  analyze      - Run static analysis"
 	@echo "  help         - Show this help message"
 
-.PHONY: all debug run terminal run-terminal clean rebuild performance analyze help
+.PHONY: all debug run test terminal run-terminal clean rebuild performance analyze help

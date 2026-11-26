@@ -6,6 +6,7 @@
 #include <map>
 #include <list>
 #include <unordered_map>
+#include <functional>
 #include <iostream>
 
 /**
@@ -33,13 +34,15 @@ struct Order {
  * @brief Structure representing a trade (execution)
  */
 struct Trade {
-    uint64_t trade_id;  // Unique trade identifier
-    uint64_t order_id;  // ID of the order being matched
-    uint64_t price;     // Execution price
-    uint64_t quantity;  // Executed quantity
-    
-    Trade(uint64_t trade_id_, uint64_t order_id_, uint64_t price_, uint64_t quantity_)
-        : trade_id(trade_id_), order_id(order_id_), price(price_), quantity(quantity_) {}
+    uint64_t trade_id;       // Unique trade identifier
+    uint64_t buy_order_id;   // ID of the buy side
+    uint64_t sell_order_id;  // ID of the sell side
+    uint64_t price;          // Execution price
+    uint64_t quantity;       // Executed quantity
+
+    Trade(uint64_t trade_id_, uint64_t buy_order_id_, uint64_t sell_order_id_, uint64_t price_, uint64_t quantity_)
+        : trade_id(trade_id_), buy_order_id(buy_order_id_), sell_order_id(sell_order_id_),
+          price(price_), quantity(quantity_) {}
 };
 
 /**
@@ -66,15 +69,30 @@ public:
      * @param price Order price
      * @param quantity Order quantity
      * @return std::vector<Trade> Vector of trades generated from matching
+     * @throws std::invalid_argument If price or quantity is zero, or the ID is already active
      */
     std::vector<Trade> AddOrder(uint64_t order_id, Side side, uint64_t price, uint64_t quantity);
+
+    /**
+     * @brief Add a market order that never rests in the book
+     *
+     * Any quantity that cannot execute immediately is cancelled.
+     *
+     * @param order_id Unique order identifier
+     * @param side BUY or SELL
+     * @param quantity Order quantity
+     * @return std::vector<Trade> Vector of trades generated from matching
+     * @throws std::invalid_argument If quantity is zero or the ID is already active
+     */
+    std::vector<Trade> AddMarketOrder(uint64_t order_id, Side side, uint64_t quantity);
     
     /**
      * @brief Cancel an existing order from the book
      * 
      * @param order_id The unique identifier of the order to cancel
+     * @return bool True when the order existed and was cancelled
      */
-    void CancelOrder(uint64_t order_id);
+    [[nodiscard]] bool CancelOrder(uint64_t order_id);
     
     /**
      * @brief Print the current state of the order book to console

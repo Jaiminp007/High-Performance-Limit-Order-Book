@@ -86,22 +86,38 @@ std::vector<Trade> AddOrder(uint64_t order_id, Side side,
 **Returns:** Vector of trades generated from matching
 
 **Behavior:**
-1. Attempts to match immediately
-2. Returns trades executed
-3. Adds remaining quantity as resting order
+1. Validates positive price and quantity
+2. Rejects duplicate active order IDs by throwing `std::invalid_argument`
+3. Attempts to match immediately
+4. Returns trades executed
+5. Adds remaining quantity as a resting limit order
+
+### AddMarketOrder()
+
+```cpp
+std::vector<Trade> AddMarketOrder(uint64_t order_id, Side side, uint64_t quantity);
+```
+
+**Behavior:**
+1. Validates positive quantity
+2. Rejects duplicate active order IDs by throwing `std::invalid_argument`
+3. Matches immediately against available resting liquidity
+4. Cancels unfilled quantity instead of resting it
 
 ### CancelOrder()
 
 ```cpp
-void CancelOrder(uint64_t order_id);
+bool CancelOrder(uint64_t order_id);
 ```
 
 **Parameters:**
 - `order_id`: ID of order to cancel
 
+**Returns:** `true` if the order existed and was cancelled, otherwise `false`
+
 **Behavior:**
 - Removes order from book if found
-- Silent no-op if order doesn't exist
+- Returns `false` if order doesn't exist
 
 ### PrintOrderBook()
 
@@ -157,7 +173,7 @@ book.AddOrder(1, Side::BUY, 100, 50);
 book.PrintOrderBook();
 
 // Cancel it
-book.CancelOrder(1);
+bool cancelled = book.CancelOrder(1);
 book.PrintOrderBook();  // Now empty
 ```
 
@@ -168,6 +184,7 @@ make              # Build release version
 make debug        # Build with debug symbols
 make performance  # Build with aggressive optimizations
 make run          # Build and run
+make test         # Build and run correctness tests
 make clean        # Remove build artifacts
 make rebuild      # Clean and rebuild
 make help         # Show all targets
@@ -200,13 +217,13 @@ make help         # Show all targets
 ## Common Pitfalls
 
 ❌ **DON'T:**
-- Reuse order IDs (undefined behavior)
-- Add zero quantity orders
+- Reuse active order IDs (the API rejects them)
+- Add zero quantity or zero price orders (the API rejects them)
 - Modify Order objects after adding to book
 
 ✅ **DO:**
 - Generate unique order IDs
-- Validate inputs before calling API
+- Validate inputs before calling API and handle `std::invalid_argument`
 - Check Trade vector size before accessing
 
 ## Debugging

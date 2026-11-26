@@ -1,82 +1,58 @@
-#!/bin/bash
-# Verification script for Order Book project
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 echo "================================================="
 echo "  ORDER BOOK PROJECT VERIFICATION"
 echo "================================================="
 echo ""
 
-# Test 1: Compile with strict warnings
-echo "[1/4] Testing compilation with strict warnings..."
-g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 -c OrderBook.cpp -o OrderBook_test.o 2>&1
-if [ $? -eq 0 ]; then
-    echo "✅ OrderBook.cpp compiles with -Werror"
-else
-    echo "❌ OrderBook.cpp has compilation errors"
-    exit 1
-fi
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
 
-g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 -c main.cpp -o main_test.o 2>&1
-if [ $? -eq 0 ]; then
-    echo "✅ main.cpp compiles with -Werror"
-else
-    echo "❌ main.cpp has compilation errors"
-    exit 1
-fi
+echo "[1/5] Compiling engine and test suite with strict warnings..."
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 -c OrderBook.cpp -o "$workdir/OrderBook.o"
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 -c main.cpp -o "$workdir/main.o"
+echo "OrderBook.cpp and main.cpp compile with -Werror"
 
-# Test 2: Link and build
 echo ""
-echo "[2/4] Linking executable..."
-g++ -std=c++17 -Wall -Wextra -Wpedantic -O2 -o orderbook_verify OrderBook_test.o main_test.o
-if [ $? -eq 0 ]; then
-    echo "✅ Linking successful"
-else
-    echo "❌ Linking failed"
-    exit 1
-fi
+echo "[2/5] Compiling trading terminal with strict warnings..."
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 \
+    TradingTerminal.cpp OrderBook.cpp -o "$workdir/trading_terminal_verify"
+echo "TradingTerminal.cpp compiles with -Werror"
 
-# Test 3: Run tests
 echo ""
-echo "[3/4] Running tests..."
-./orderbook_verify > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "✅ All tests pass"
-else
-    echo "❌ Tests failed"
-    exit 1
-fi
+echo "[3/5] Linking automated test suite..."
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 \
+    -o "$workdir/orderbook_verify" "$workdir/OrderBook.o" "$workdir/main.o"
+echo "Linking successful"
 
-# Test 4: Check for memory issues (if valgrind available)
 echo ""
-echo "[4/4] Checking project structure..."
-required_files=("OrderBook.h" "OrderBook.cpp" "main.cpp" "Makefile" "README.md")
+echo "[4/5] Running automated correctness tests..."
+"$workdir/orderbook_verify" > /dev/null
+echo "Automated correctness tests pass"
+
+echo ""
+echo "[5/5] Checking terminal startup and project structure..."
+printf '0\n' | "$workdir/trading_terminal_verify" > /dev/null
+required_files=("OrderBook.h" "OrderBook.cpp" "main.cpp" "TradingTerminal.cpp" "Makefile" "README.md")
 for file in "${required_files[@]}"; do
-    if [ -f "$file" ]; then
-        echo "✅ $file exists"
-    else
-        echo "❌ $file missing"
+    if [[ ! -f "$file" ]]; then
+        echo "Missing required file: $file"
+        exit 1
     fi
 done
-
-# Cleanup
-rm -f OrderBook_test.o main_test.o orderbook_verify
+echo "Terminal startup and project structure pass"
 
 echo ""
 echo "================================================="
-echo "  ✅ ALL VERIFICATION CHECKS PASSED!"
+echo "  ALL VERIFICATION CHECKS PASSED"
 echo "================================================="
-echo ""
-echo "Project Summary:"
-echo "  - Source files: 3 (OrderBook.h, OrderBook.cpp, main.cpp)"
-echo "  - Documentation: 5 markdown files"
-echo "  - Build system: Makefile"
-echo "  - Standard: C++17"
-echo "  - Dependencies: None (Standard Library only)"
 echo ""
 echo "Quick Commands:"
 echo "  make              # Build release version"
-echo "  make run          # Build and run"
-echo "  make clean        # Clean build artifacts"
-echo "  ./orderbook       # Run the executable"
+echo "  make run          # Build and run automated tests"
+echo "  make terminal     # Build interactive terminal"
+echo "  ./verify.sh       # Run this verification suite"
 echo ""
-echo "🎉 Your high-performance order book is ready!"

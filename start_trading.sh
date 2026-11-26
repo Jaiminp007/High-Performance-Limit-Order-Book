@@ -1,9 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Trading Terminal Launcher
 # Professional order book trading interface
 
-clear
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
+clear 2>/dev/null || true
 
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║                                                          ║"
