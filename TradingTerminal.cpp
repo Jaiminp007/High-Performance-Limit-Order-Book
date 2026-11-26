@@ -64,12 +64,29 @@ private:
         return total;
     }
 
+    static string trim(const string& input) {
+        const size_t first = input.find_first_not_of(" \t\r\n");
+        if (first == string::npos) {
+            return "";
+        }
+        const size_t last = input.find_last_not_of(" \t\r\n");
+        return input.substr(first, last - first + 1);
+    }
+
+    bool readInputLine(string& input) {
+        if (!getline(cin, input)) {
+            cout << "\nInput closed.\n";
+            return false;
+        }
+        input = trim(input);
+        return true;
+    }
+
     bool readPositiveUint64(const string& prompt, uint64_t& value) {
         while (true) {
             cout << prompt;
             string input;
-            if (!(cin >> input)) {
-                cout << "\nInput closed.\n";
+            if (!readInputLine(input)) {
                 return false;
             }
 
@@ -199,8 +216,7 @@ public:
             showMenu();
 
             string choiceInput;
-            if (!(cin >> choiceInput)) {
-                cout << "\nInput closed.\n";
+            if (!readInputLine(choiceInput)) {
                 break;
             }
 
