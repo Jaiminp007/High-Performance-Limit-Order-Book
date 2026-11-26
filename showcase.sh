@@ -5,10 +5,6 @@ set -euo pipefail
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
-if [[ ! -x ./orderbook || ! -x ./trading_terminal ]]; then
-    make
-fi
-
 clear 2>/dev/null || true
 
 cat << "EOF"
@@ -39,7 +35,7 @@ echo "  3) Documentation      - View user guides"
 echo "  4) Build Info         - Show build information"
 echo "  0) Exit"
 echo ""
-read -p "Select option: " choice
+read -p "Select option: " choice || exit 0
 
 case $choice in
     1)
@@ -52,6 +48,9 @@ case $choice in
         echo ""
         echo "Running Test Suite..."
         sleep 1
+        if [[ ! -x ./orderbook ]]; then
+            make orderbook
+        fi
         ./orderbook
         ;;
     3)
@@ -71,7 +70,11 @@ case $choice in
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
         echo "Language:      C++17"
-        echo "Compiler:      $(g++ --version | head -n1)"
+        if command -v g++ >/dev/null 2>&1; then
+            echo "Compiler:      $(g++ --version | head -n1)"
+        else
+            echo "Compiler:      g++ not found"
+        fi
         echo "Build System:  GNU Make"
         echo "Dependencies:  Standard Library Only"
         echo ""
@@ -98,4 +101,4 @@ case $choice in
 esac
 
 echo ""
-read -p "Press Enter to continue..."
+read -p "Press Enter to continue..." || true
