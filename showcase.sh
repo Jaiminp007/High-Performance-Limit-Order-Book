@@ -79,7 +79,13 @@ case $choice in
         echo "Dependencies:  Standard Library Only"
         echo ""
         echo "Components:"
-        ls -lh orderbook trading_terminal 2>/dev/null | tail -2 | awk '{print "  " $9 " - " $5}'
+        for component in orderbook trading_terminal; do
+            if [[ -x "$component" ]]; then
+                ls -lh "$component" | awk '{print "  " $9 " - " $5}'
+            else
+                echo "  $component - not built"
+            fi
+        done
         echo ""
         echo "Performance:"
         echo "  • Order Processing: O(log n + m)"
